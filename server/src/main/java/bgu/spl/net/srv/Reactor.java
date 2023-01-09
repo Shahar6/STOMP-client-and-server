@@ -2,6 +2,10 @@ package bgu.spl.net.srv;
 
 import bgu.spl.net.api.MessageEncoderDecoder;
 import bgu.spl.net.api.MessagingProtocol;
+import bgu.spl.net.api.StompMessagingProtocol;
+import bgu.spl.net.impl.stomp.ConnectionsImpl;
+import bgu.spl.net.impl.stomp.StompMessageEncoderDecoder;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ClosedSelectorException;
@@ -15,34 +19,35 @@ import java.util.function.Supplier;
 public class Reactor<T> implements Server<T> {
 
     private final int port;
-    private final Supplier<MessagingProtocol<T>> protocolFactory;
-    private final Supplier<MessageEncoderDecoder<T>> readerFactory;
+    private final Supplier<StompMessagingProtocol<T>> protocolFactory;
+    private final Supplier<StompMessageEncoderDecoder<T>> readerFactory;
     private final ActorThreadPool pool;
     private Selector selector;
-
+    private Connections<T> connections;
     private Thread selectorThread;
     private final ConcurrentLinkedQueue<Runnable> selectorTasks = new ConcurrentLinkedQueue<>();
 
     public Reactor(
             int numThreads,
             int port,
-            Supplier<MessagingProtocol<T>> protocolFactory,
-            Supplier<MessageEncoderDecoder<T>> readerFactory) {
+            Supplier<StompMessagingProtocol<T>> protocolFactory,
+            Supplier<StompMessageEncoderDecoder<T>> readerFactory, ConnectionsImpl<T> con) {
 
         this.pool = new ActorThreadPool(numThreads);
         this.port = port;
         this.protocolFactory = protocolFactory;
         this.readerFactory = readerFactory;
+        this.connections =  con;
     }
 
     @Override
     public void serve() {
-	selectorThread = Thread.currentThread();
+        connections = new ConnectionsImpl<>();
+	    selectorThread = Thread.currentThread();
         try (Selector selector = Selector.open();
-                ServerSocketChannel serverSock = ServerSocketChannel.open()) {
+            ServerSocketChannel serverSock = ServerSocketChannel.open()) {
 
             this.selector = selector; //just to be able to close
-
             serverSock.bind(new InetSocketAddress(port));
             serverSock.configureBlocking(false);
             serverSock.register(selector, SelectionKey.OP_ACCEPT);
@@ -99,7 +104,10 @@ public class Reactor<T> implements Server<T> {
                 readerFactory.get(),
                 protocolFactory.get(),
                 clientChan,
-                this);
+                this, (ConnectionsImpl<T>)connections);
+        int id = ((ConnectionsImpl<T>) connections).addActiveUser(handler);
+        handler.getProtocol().start(id, connections);      
+        handler.ConnectionId = id;
         clientChan.register(selector, SelectionKey.OP_READ, handler);
     }
 
