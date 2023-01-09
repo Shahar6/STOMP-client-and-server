@@ -1,19 +1,25 @@
 CFLAGS:=-c -Wall -Weffc++ -g -std=c++11 -Iinclude
 LDFLAGS:=-lboost_system -lpthread
 
-all: EchoClient
+all: clean StompWCIClient
 
 EchoClient: bin/ConnectionHandler.o bin/echoClient.o
 	g++ -o bin/EchoClient bin/ConnectionHandler.o bin/echoClient.o $(LDFLAGS)
 
-StompWCIClient: bin/ConnectionHandler.o bin/StompClient.obin/event.o
-	g++ -o bin/StompWCIClient bin/ConnectionHandler.o bin/StompClient.o $(LDFLAGS)
+StompWCIClient: bin/StompConnectionHandler.o bin/StompClient.o bin/event.o bin/Subscriptions.o
+	g++ -o bin/StompWCIClient bin/StompConnectionHandler.o bin/StompClient.o bin/event.o bin/Subscriptions.o $(LDFLAGS)
+
+bin/StompConnectionHandler.o: src/StompConnectionHandler.cpp
+	g++ $(CFLAGS) -o bin/StompConnectionHandler.o src/StompConnectionHandler.cpp
 
 bin/ConnectionHandler.o: src/ConnectionHandler.cpp
 	g++ $(CFLAGS) -o bin/ConnectionHandler.o src/ConnectionHandler.cpp
 
 bin/echoClient.o: src/echoClient.cpp
 	g++ $(CFLAGS) -o bin/echoClient.o src/echoClient.cpp
+
+bin/Subscriptions.o: src/Subscriptions.cpp
+	g++ $(CFLAGS) -o bin/Subscriptions.o src/Subscriptions.cpp
 
 bin/event.o: src/event.cpp
 	g++ $(CFLAGS) -o bin/event.o src/event.cpp
