@@ -12,6 +12,7 @@ private:
     std::string team_a_name;
     std::string team_b_name;
     bool active;
+    int time;
     bool before_halftime;
     int team_a_goals;
     int team_a_possession;
@@ -20,6 +21,7 @@ private:
     std::vector<std::string> details;
 
 public:
+    Game(string teama, string teamb);
     Game(Event& e);
     virtual ~Game();
     std::string& aName();
@@ -35,8 +37,10 @@ public:
     int a_goals();
     int a_possession();
     int b_goals();
+    int getTime();
+    void setTime(int t);
     int b_possession();
-    void addDetail(std::string& detail);
-    std::vector<std::string>& details();
+    void addDetail(std::string detail);
+    std::vector<std::string>& getDetails();
 };
 

@@ -31,3 +31,8 @@ void Subscriptions::clear(){
     active_games_bystring.clear();
     pending_games.clear();
 }
+bool Subscriptions::contains(std::string st){
+    if (active_games_bystring.count(st) > 0)
+        return true;
+    return false;
+}
