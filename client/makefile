@@ -6,8 +6,8 @@ all: clean StompWCIClient
 EchoClient: bin/ConnectionHandler.o bin/echoClient.o
 	g++ -o bin/EchoClient bin/ConnectionHandler.o bin/echoClient.o $(LDFLAGS)
 
-StompWCIClient: bin/StompConnectionHandler.o bin/StompClient.o bin/event.o bin/Subscriptions.o
-	g++ -o bin/StompWCIClient bin/StompConnectionHandler.o bin/StompClient.o bin/event.o bin/Subscriptions.o $(LDFLAGS)
+StompWCIClient: bin/StompConnectionHandler.o bin/StompClient.o bin/event.o bin/Subscriptions.o bin/game.o
+	g++ -o bin/StompWCIClient bin/StompConnectionHandler.o bin/StompClient.o bin/event.o bin/Subscriptions.o bin/game.o $(LDFLAGS)
 
 bin/StompConnectionHandler.o: src/StompConnectionHandler.cpp
 	g++ $(CFLAGS) -o bin/StompConnectionHandler.o src/StompConnectionHandler.cpp
@@ -23,6 +23,9 @@ bin/Subscriptions.o: src/Subscriptions.cpp
 
 bin/event.o: src/event.cpp
 	g++ $(CFLAGS) -o bin/event.o src/event.cpp
+
+bin/game.o: src/game.cpp
+	g++ $(CFLAGS) -o bin/game.o src/game.cpp
 
 bin/StompClient.o: src/StompClient.cpp
 	g++ $(CFLAGS) -o bin/StompClient.o src/StompClient.cpp

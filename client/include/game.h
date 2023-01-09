@@ -21,8 +21,7 @@ private:
     std::vector<std::string> details;
 
 public:
-    Game(string teama, string teamb);
-    Game(Event& e);
+    Game(std::string teama, std::string teamb);
     virtual ~Game();
     std::string& aName();
     std::string& bName();
@@ -37,9 +36,9 @@ public:
     int a_goals();
     int a_possession();
     int b_goals();
+    int b_possession();
     int getTime();
     void setTime(int t);
-    int b_possession();
     void addDetail(std::string detail);
     std::vector<std::string>& getDetails();
 };

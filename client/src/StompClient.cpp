@@ -81,18 +81,57 @@
                             }
                         }
                         else if(startsWith(answer, "MESSAGE")){
+                            // assuming message is most recent event, as was said on forums
                             int g_index = answer.find("ion:/") + 5;
                             int u_index = answer.find("user:") + 5;
                             string g = answer.substr(g_index, answer.find(" ", g_index) - g_index);
                             string g_user = answer.substr(u_index, answer.find("\n", u_index) - u_index);
                             std::pair<string,string> p = make_pair(g_user, g);
-                            Game toUpdate(g.substr(0,g.find("_")),g.substr(g.find("_") + 1, g.length() - (g.find("_") + 1));
+                            Game toUpdate(g.substr(0, g.find("_")), g.substr(g.find("_") + 1, g.length() - (g.find("_") + 1)));
                             if(records.count(p) > 0){
                                 toUpdate = records.at(p);
                             }
-                            else{
-
+                            int etime = stoi(answer.substr(answer.find("time:") + 6, answer.find("\n",answer.find("time:"))));
+                            if (answer.find("goals:") != std::string::npos) { // updating goals
+                                int index = answer.find("goals:") + 7;
+                                int goals = stoi(answer.substr(index, answer.find("\n", index) - index));
+                                if((unsigned) index < answer.find("team_b_updates:")){
+                                    toUpdate.set_a_goals(goals);
+                                    if (answer.find("goals:", index) != std::string::npos) {
+                                        int index2 = answer.find("goals:",index) + 7;
+                                        goals = stoi(answer.substr(index2, answer.find("\n", index2) - index2));
+                                        toUpdate.set_b_goals(goals);
+                                    }
+                                }
+                                else{
+                                    toUpdate.set_b_goals(goals);
+                                }
                             }
+                            if (answer.find("possession:") != std::string::npos) { // updating possession
+                                int index = answer.find("possession:") + 12;
+                                int pos = stoi(answer.substr(index, answer.find("%", index) - index));
+                                if((unsigned) index < answer.find("team_b_updates:")){
+                                    toUpdate.set_a_possession(pos);
+                                    if (answer.find("possession:", index) != std::string::npos) {
+                                        int index2 = answer.find("possession:",index) + 12;
+                                        pos = stoi(answer.substr(index2, answer.find("%", index2) - index2));
+                                        toUpdate.set_b_possession(pos);
+                                    }
+                                }
+                                else{
+                                    toUpdate.set_b_possession(pos);
+                                }
+                            }
+                            if((answer.find("before halftime: false") != std::string::npos)){
+                                toUpdate.setBeforeHalf(false);
+                            }
+
+                            int des_index = answer.find("description :\n") + 15;
+                            int null_index = answer.find('\0');
+                            string details = answer.substr(des_index, null_index - 1 - des_index);
+                            int name_index = answer.find("event name : ") + 13;
+                            string name = answer.substr(answer.find(" ", name_index) + 1, answer.find("\n", name_index) - answer.find(" ", name_index));
+                            toUpdate.addDetail(etime + " - " + name + ":\n\n" + details + "\n\n\n");
                         }
                         else if(startsWith(answer, "ERROR")){
                             std::cout << answer.substr(answer.find("message:") + 8, answer.find("\n", answer.find("message:"))) << std::endl;
@@ -184,18 +223,15 @@
                     temp = records.at(std::make_pair(user ,toSend.team_a_name + "_" + toSend.team_b_name));
                     ctime = temp.getTime();
                 }
-                else{
-                    int agoals;
-                    int bgoals;
-                    int apossessions;
-                    int bpossession;
-                }
-                bool halftime=false;
                 bool update = false;
             for(Event e : toSend.events){
-                if(e.get_time() > ctime || ((temp.beforeHalf() && e.get_game_updates().count("before halftime") > 0) && e.get_game_updates().at("before halftime") == "false")){
-                    temp.addDetail(std::to_string(e.get_time()) + " - " + e.get_name() + ":\n\n" + e.get_discription() + "\n\n\n");
+                temp.addDetail(std::to_string(e.get_time()) + " - " + e.get_name() + ":\n\n" + e.get_discription() + "\n\n\n");
+                if(e.get_time() > ctime){                    
                     update = true;
+                }
+                if(((temp.beforeHalf() && e.get_game_updates().count("before halftime") > 0) && e.get_game_updates().at("before halftime") == "false")){
+                    update = true;
+                    temp.setBeforeHalf(false);
                 }
                 input = "SEND\n";          
                 input.append("destination:/" + e.get_team_a_name() + "_" + e.get_team_b_name() + "\n\n");
@@ -284,7 +320,7 @@
             outFile << "goals: " + std::to_string(records.at(key).b_goals()) + "\n";
             outFile << "possession: " + std::to_string(records.at(key).b_possession()) + "%\n";
             outFile << "Game event reports:\n";
-            for(int i = 0; i < records.at(key).getDetails().size(); i++){
+            for(int i = 0; (unsigned) i < records.at(key).getDetails().size(); i++){
                 outFile << records.at(key).getDetails().at(i);
             }
             outFile.close();
