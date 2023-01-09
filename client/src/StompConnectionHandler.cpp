@@ -12,6 +12,7 @@ StompConnectionHandler::StompConnectionHandler(string host, short port) : host_(
                                                                 socket_(io_service_) {}
 
 StompConnectionHandler::~StompConnectionHandler() {
+	std::cout << "call3" << std::endl;
 	close();
 }
 
@@ -81,7 +82,9 @@ bool StompConnectionHandler::getFrameAscii(std::string &frame, char delimiter) {
 		std::cerr << "recv failed2 (Error: " << e.what() << ')' << std::endl;
 		return false;
 	}
-	return true;
+	if(frame.find("\n") != std::string::npos)
+		return true;
+	return false;
 }
 
 bool StompConnectionHandler::sendFrameAscii(const std::string &frame, char delimiter) {
@@ -97,6 +100,7 @@ bool StompConnectionHandler::sendFrame(string& frame){
 // Close down the connection properly.
 void StompConnectionHandler::close() {
 	try {
+		std::cout << "closing socket"<<std::endl;
 		socket_.close();
 	} catch (...) {
 		std::cout << "closing failed: connection already closed" << std::endl;

@@ -41,8 +41,8 @@ int Game::getTime(){return time;}
 void Game::setTime(int t){time = t;}
 
 void Game::addDetail(std::string detail){
-    int i = details.size();
-    details[i] = detail;
+    //int i = details.size();
+    details.push_back(detail);
 }
 
 std::vector<std::string>& Game::getDetails(){return details;}

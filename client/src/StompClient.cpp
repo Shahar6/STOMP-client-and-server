@@ -31,11 +31,12 @@
         static StompConnectionHandler* scHandler;
 
             int main() {
+            //StompConnectionHandler tempHandler(host, port);
             thread t1(handleCommands);
             while(!shouldTerminate){
                 if(changeServer){
-                    StompConnectionHandler tempHandler(host, port);
-                    scHandler = &tempHandler; // updating stompConnectionHandler
+                    StompConnectionHandler* tempHandler = new StompConnectionHandler(host,port);
+                    scHandler = tempHandler; // updating stompConnectionHandler
                     if (!scHandler -> connect()) {
                         std::cerr << "Could not connect to the server." << std::endl;       
                     }
@@ -49,7 +50,7 @@
                                 }
                                 else if(startsWith(answer, "ERROR")){
                                     // returns the message inside the error frame
-                                    std::cout << answer.substr(answer.find("message:") + 8, answer.find("\n", answer.find("message:"))) << std::endl;
+                                    std::cout << answer.substr(answer.find("-----\n") + 6, answer.find("\n", answer.find("-----\n") + 6)) << std::endl;
                                 }
                             }
                     }
@@ -58,7 +59,7 @@
                 else if(loggedIn){
                     // handle frame
                     string answer;
-                    if(scHandler -> getFrameAscii(answer, '\0')){
+                    if(scHandler -> getFrameAscii(answer, '\0') && answer != ""){
                         if(startsWith(answer, "RECEIPT")){
                             int id = stoi(answer.substr(answer.find("id:") + 3, answer.find("\n")));
                             if(std::find(logoutIds.begin(), logoutIds.end(), id) != logoutIds.end()){ // logging out, removing all user data
@@ -67,6 +68,7 @@
                                 subs.clear();
                                 logoutIds.clear();
                                 records.clear();
+                                delete scHandler;
                                 loggedIn = false;
                             }
                             else if(id < 0){
@@ -86,6 +88,7 @@
                             int u_index = answer.find("user:") + 5;
                             string g = answer.substr(g_index, answer.find(" ", g_index) - g_index);
                             string g_user = answer.substr(u_index, answer.find("\n", u_index) - u_index);
+                            if(g_user != user){
                             std::pair<string,string> p = make_pair(g_user, g);
                             Game toUpdate(g.substr(0, g.find("_")), g.substr(g.find("_") + 1, g.length() - (g.find("_") + 1)));
                             if(records.count(p) > 0){
@@ -132,6 +135,7 @@
                             int name_index = answer.find("event name : ") + 13;
                             string name = answer.substr(answer.find(" ", name_index) + 1, answer.find("\n", name_index) - answer.find(" ", name_index));
                             toUpdate.addDetail(etime + " - " + name + ":\n\n" + details + "\n\n\n");
+                            }
                         }
                         else if(startsWith(answer, "ERROR")){
                             std::cout << answer.substr(answer.find("message:") + 8, answer.find("\n", answer.find("message:"))) << std::endl;
@@ -140,9 +144,12 @@
                             subs.clear();
                             logoutIds.clear();
                             records.clear();
+                            delete scHandler;
                             loggedIn = false;
                         }
+                        
                     }
+                    
                 }
             }
             delete scHandler;
@@ -219,7 +226,7 @@
             if(subs.contains(toSend.team_a_name + "_" + toSend.team_b_name)){
                 int ctime=-1;
                 Game temp(toSend.team_a_name, toSend.team_b_name);
-                if(records.count(std::make_pair(user ,toSend.team_a_name + "_" + toSend.team_b_name))){
+                if(records.count(std::make_pair(user ,toSend.team_a_name + "_" + toSend.team_b_name)) > 0){
                     temp = records.at(std::make_pair(user ,toSend.team_a_name + "_" + toSend.team_b_name));
                     ctime = temp.getTime();
                 }
