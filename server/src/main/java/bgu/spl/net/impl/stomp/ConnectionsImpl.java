@@ -9,6 +9,7 @@ import java.util.Vector;
 import java.util.ArrayList;
 import bgu.spl.net.srv.ConnectionHandler;
 import bgu.spl.net.srv.Connections;
+import bgu.spl.net.srv.NonBlockingConnectionHandler;
 
 public class ConnectionsImpl<T> implements Connections<T> {
 public static volatile int msgCounter = 0;
@@ -71,6 +72,7 @@ public void disconnect(int connectionId) {
             for(int[] index: v){
                 if(index[1] == connectionId){
                     v.remove(index);
+                    break;
                 }
             }
         }
@@ -80,6 +82,7 @@ public void disconnect(int connectionId) {
         userToClientID.remove(user);
         user.uniqueIDReset();
     }
+    if(handler instanceof NonBlockingConnectionHandler) return;
     try {
         handler.close();
     } catch (Exception e) {
@@ -286,8 +289,8 @@ public boolean SEND(T message){
     Vector<int[]> vector = topics.get(topic);
     for(int[] index: vector){ // check that the sender is subscribe to the channel.
         if(index[1] == clientID){
-            send(topic, (T)message);
             T receipt = RECEIPT(message);
+            send(topic, (T)message);
             send(clientID, null, receipt);
             return false;
         }
@@ -309,6 +312,7 @@ public void DISCONNECT(T message){
         for(int[] index: v){
             if(index[1] == clientId){
                 v.remove(index);
+                break;
             }
         }
     }
@@ -319,6 +323,7 @@ public void DISCONNECT(T message){
     activeUsersHandlerToID.remove(handler);
     activeUsersIDToHandler.remove(clientId);
     user.uniqueIDReset();
+    if(handler instanceof NonBlockingConnectionHandler) return;
     try {
         handler.close();
     } catch (Exception e) {
