@@ -63,7 +63,6 @@
                         if(startsWith(answer, "RECEIPT")){
                             int id = stoi(answer.substr(answer.find("id:") + 3, answer.find("\n")));
                             if(std::find(logoutIds.begin(), logoutIds.end(), id) != logoutIds.end()){ // logging out, removing all user data
-                                std::cout << "close1" <<std::endl;
                                 scHandler -> close();
                                 nextId = 1;
                                 subs.clear();
@@ -146,7 +145,6 @@
                         }
                         else if(startsWith(answer, "ERROR")){
                             std::cout << answer.substr(answer.find("message:") + 8, answer.find("\n", answer.find("message:"))) << std::endl;
-                            std::cout << "close2" <<std::endl;
                             scHandler -> close();
                             nextId = 1;
                             subs.clear();
