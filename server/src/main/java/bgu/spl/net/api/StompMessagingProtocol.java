@@ -12,7 +12,7 @@ public interface StompMessagingProtocol<T>  {
 	**/
     void start(int connectionId, Connections<T> connections);
     
-    void process(T message, boolean blocking);
+    void process(T message, int connectionId);
 	
 	/**
      * @return true if the connection should be terminated

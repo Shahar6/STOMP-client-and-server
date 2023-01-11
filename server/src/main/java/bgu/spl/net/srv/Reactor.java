@@ -30,7 +30,7 @@ public class Reactor<T> implements Server<T> {
             int numThreads,
             int port,
             Supplier<StompMessagingProtocol<T>> protocolFactory,
-            Supplier<StompMessageEncoderDecoder<T>> readerFactory, ConnectionsImpl<T> con) {
+            Supplier<StompMessageEncoderDecoder<T>> readerFactory) {
 
         this.pool = new ActorThreadPool(numThreads);
         this.port = port;
@@ -98,10 +98,10 @@ public class Reactor<T> implements Server<T> {
     private void handleAccept(ServerSocketChannel serverChan, Selector selector, ConnectionsImpl<T> con) throws IOException {
         SocketChannel clientChan = serverChan.accept();
         clientChan.configureBlocking(false);
-        StompMessagingProtocol<T> proNew = protocolFactory.get();
+        StompMessagingProtocol<T> pro = protocolFactory.get();
         final NonBlockingConnectionHandler<T> handler = new NonBlockingConnectionHandler<>(
                 readerFactory.get(),
-                proNew,
+                pro,
                 clientChan,
                 this, con);
         int id = con.addActiveUser(handler);

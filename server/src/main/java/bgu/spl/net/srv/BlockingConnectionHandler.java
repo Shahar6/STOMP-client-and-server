@@ -19,7 +19,7 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
     private BufferedInputStream in;
     private BufferedOutputStream out;
     private volatile boolean connected = true;
-    public Integer ConnectionId = null;
+    public int ConnectionId ;
     public Connections<T> connections;
     public boolean blocking = true;
     public BlockingConnectionHandler(Socket sock, StompMessageEncoderDecoder<T> reader, StompMessagingProtocol<T> protocol, ConnectionsImpl<T> con) {
@@ -39,7 +39,12 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
                 T nextMessage = encdec.decodeNextByte((byte) read);
                 if (nextMessage != null) {
                     ((ConnectionsImpl<T>)connections).addMsg(nextMessage, ConnectionId);// connect between msg to id for knowing how to combine user and handler.
-                    protocol.process(nextMessage, blocking);
+                    protocol.process(nextMessage, ConnectionId);
+                    // response = protocol.process(nextMessage);
+                   // if (response != null) {
+                    //    out.write(encdec.encode(response));
+                   //     out.flush();
+                   // }
                 }
             }
 

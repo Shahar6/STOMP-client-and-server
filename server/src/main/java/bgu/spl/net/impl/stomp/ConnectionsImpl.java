@@ -31,26 +31,22 @@ public boolean send(int connectionId, T msg, T receipt) {
     // TODO Auto-generated method stub
     // we can assume that the message is string only and then...
     // here we get the full msg and we send it to the function send in handler for continue the process.
-    if(messageToIDHandler.containsKey(msg)) messageToIDHandler.remove(msg);
     ConnectionHandler<T> handler = activeUsersIDToHandler.get(connectionId);
-    System.out.println((handler != null) + " " + receipt + " " + msg);
     if(msg != null) handler.send(msg);
     if(receipt != null) handler.send(receipt);
     return false;
 }
 
 @Override
-public void send(String channel, T msg) {
+public void send(String channel, T msg, int connecstionId) {
     // TODO Auto-generated method stub
     // we assume that when the client sent a msg in the frame "send" the hashmap of the msg and the handlerID is not removed yet.
     Vector<int[]> subscribes = topics.get(channel);
-    int senderID = messageToIDHandler.get(msg);
-    if(messageToIDHandler.containsKey(msg)) messageToIDHandler.remove(msg); // here we delete the connection between the msg to the handler.
     for(int[] v: subscribes){
             ConnectionHandler<T> handler = activeUsersIDToHandler.get(v[1]);
             String response = "MESSAGE\nsubscription:" +  v[0] + "\nmessage-id:" + (msgCounter) +
-                        "/ndestination:/" + channel + "\n\n" + (String)msg + "\n" + '\u0000'; // changed here.
-            handler.send((T)response);             
+                        "\ndestination:/" + channel + "\n\n" + (String)msg + "\n" + '\u0000';
+            handler.send((T)response);
     }
     msgCounter++;
     
@@ -110,8 +106,7 @@ private void connectBetweenUserToClient(T message, StompUser user){
 }
 
 
-public boolean CONNECT(T message){
-    int clientID = messageToIDHandler.get(message);
+public boolean CONNECT(T message, int connectionId){
     String msg = (String) message;
     String[] split = msg.split("login:", 2);
     String find = split[1];
@@ -138,19 +133,19 @@ public boolean CONNECT(T message){
     }
     if(!host.equals("stomp.cs.bgu.ac.il")){
         String res = "the host is not right";
-        ERROR(clientID, message, (T)response);
+        ERROR(connectionId, message, (T)response);
         return true;
     }
-    T receipt = RECEIPT(message);
+    T receipt = RECEIPT(message, connectionId);
     if(users.contains(userName)){
         StompUser u = connectBetweenUserToObjectUser.get(userName);
         if(u.password.equals(password)){
-            if(userToClientID.containsValue(messageToIDHandler.get(msg))){
+            if(userToClientID.containsValue(connectionId)){
                 response = "CONNECTED\nthe client is already logged in, log out before trying again\n" + version + "\n\n" + '\u0000';
             }
             else if(u.connect){
                 response = "User already logged in";
-                ERROR(messageToIDHandler.get(message), message, (T)response);
+                ERROR(connectionId, message, (T)response);
                 return true;
             }
             else{ // assume that the active connection does not happpen because everytime user log out, the connection is deleting.
@@ -160,10 +155,10 @@ public boolean CONNECT(T message){
         }
         else{
             response = "Wrong password";
-            ERROR(messageToIDHandler.get(message), message, (T)response);
+            ERROR(connectionId, message, (T)response);
             return true;
         }
-        u.uniqueID = clientID;
+        u.uniqueID = connectionId;
     }
     else{
         StompUser member = new StompUser<>(userName, password);
@@ -172,21 +167,19 @@ public boolean CONNECT(T message){
         // add him to all the hashmaps.
         connectBetweenUserToObjectUser.put(userName, member);
         users.add(userName); //  add the user Name to the list of users.
-        member.uniqueID = clientID;
+        member.uniqueID = connectionId;
     }
     
     // add the connection between user to clientID.
     connectBetweenUserToClient(message, connectBetweenUserToObjectUser.get(userName));
-    System.out.println("hey there");
-    send(userToClientID.get(connectBetweenUserToObjectUser.get(userName)), (T)response, (T)receipt);
+    send(connectionId, (T)response, (T)receipt);
     return false;
 }
 
-public T RECEIPT(T msg){
+public T RECEIPT(T msg, int connectionId){
     // need to change in every frame that here it will find  a receipt
     String message = (String) msg;
     String response = "";
-    int clientID = messageToIDHandler.get(msg);
     if(message.contains("receipt:")){
         String[] split = message.split("receipt:", 2);
         String find = split[1];
@@ -201,9 +194,8 @@ public T RECEIPT(T msg){
     return null;
 }
 
-public boolean SUBSCRIBE(T message){
+public boolean SUBSCRIBE(T message, int connectionId){
     String msg = (String) message;
-    int clientID = messageToIDHandler.get(message);
     String[] split = msg.split("destination:/", 2);
     String topic = "";
     int j = 0;
@@ -225,19 +217,19 @@ public boolean SUBSCRIBE(T message){
         uniqueID = uniqueID + find.charAt(j++);
     }
     int subscriptionID = Integer.parseInt(uniqueID); // id to save for subsrcibe.
-    int[] arr = {subscriptionID, clientID}; // the left one is the unique number for subscription and the right one is the clientId.
+    int[] arr = {subscriptionID, connectionId}; // the left one is the unique number for subscription and the right one is the clientId.
     // if user wants to subscribe to a channel but he is already subscribed.
     if(topics.get(topic).contains(arr)){
-        ERROR(clientID, message, (T)("you are already subscribed to this channel."));
+        ERROR(connectionId, message, (T)("you are already subscribed to this channel."));
     }
     Vector<int[]> channel = topics.get(topic);
     channel.add(arr); // we add to the channel the subscribe.
-    T receipt = RECEIPT((T)msg);
-    send(clientID, null, (T)receipt);
+    T receipt = RECEIPT((T)msg, connectionId);
+    send(connectionId, null, (T)receipt);
     return false;
 }
 
-public boolean UNSUBSCRIBE(T message){
+public boolean UNSUBSCRIBE(T message, int connectionId){
     String msg = (String) message;
     String[] split = msg.split("id:", 2);
     String find = split[1];
@@ -247,21 +239,19 @@ public boolean UNSUBSCRIBE(T message){
         uniqueId = uniqueId + find.charAt(j++);
     }
     int sunscriptionID = Integer.parseInt(uniqueId); // receipt to send back.
-    int clientID = messageToIDHandler.get(message);
     // we search which channel the user wants to unsubscribe.
     for(Vector<int[]> v : topics.values()){
         for(int[] i: v){
-            if(i[0] == sunscriptionID && i[1] == clientID){
-                T receipt = RECEIPT(message);
-                messageToIDHandler.remove(message);
+            if(i[0] == sunscriptionID && i[1] == connectionId){
+                T receipt = RECEIPT(message, connectionId);
                 v.remove(i);
-                send(clientID, null, receipt);
+                send(connectionId, null, receipt);
                 return false;
             }
         }
     }
     String response = "you sent an unrecognized id";
-    ERROR(clientID, message, (T)response);
+    ERROR(connectionId, message, (T)response);
     return true;
 }
 
@@ -269,62 +259,62 @@ public void addMsg(T nextMessage, Integer id) {
     messageToIDHandler.put(nextMessage, id);
 }
 
-public boolean SEND(T message){
+public boolean SEND(T message, int connectionId){
     // need to check if the client subsrcibe to the channel he wants to send a msg.
     // we remove the connection between the msg to the client id in the function "send" later.
     String msg = (String) message;
-    int clientID = messageToIDHandler.get(message);
     String destination = "";
     String[] split = msg.split("destination:/", 2);
     String find = split[1];
-    System.out.println(find);
     int j = 0;
     String topic = "";
     while(find.charAt(j) != '\n'){
         topic += find.charAt(j++);
     }
     if(!topics.containsKey(topic)){
-        ERROR(clientID, message, (T)("There is no such topic"));
+        ERROR(connectionId, message, (T)("There is no such topic"));
         return true;
     }
     Vector<int[]> vector = topics.get(topic);
     for(int[] index: vector){ // check that the sender is subscribe to the channel.
-        if(index[1] == clientID){
-            T receipt = RECEIPT(message);
-            send(topic, (T)message);
-            send(clientID, null, receipt);
+        if(index[1] == connectionId){
+            send(topic, (T)message, connectionId);
+            T receipt = RECEIPT(message, connectionId);
+            send(connectionId, null, receipt);
             return false;
         }
     }
-    ERROR(clientID, message, (T)("you are not subscribe to this channel"));
+    ERROR(connectionId, message, (T)("you are not subscribed to this channel"));
     return true;
 }
 
-public void DISCONNECT(T message){
-    int clientId = messageToIDHandler.get(message);
+public void DISCONNECT(T message, int connectionId){
     String msg = (String) message;
-    T receipt = RECEIPT(message);
-    send(clientId, null, receipt);
-    ConnectionHandler<T> handler = activeUsersIDToHandler.get(clientId);
-    StompUser user = clientIDtoUser.get(clientId);
+    T receipt = RECEIPT(message, connectionId);
+    send(connectionId, null, receipt);
+    ConnectionHandler<T> handler = activeUsersIDToHandler.get(connectionId);
+    StompUser user = clientIDtoUser.get(connectionId);
     // remove the user from all the channels.
     for(String topic: topics.keySet()){
         Vector<int[]> v = topics.get(topic);
         for(int[] index: v){
-            if(index[1] == clientId){
+            if(index[1] == connectionId){
                 v.remove(index);
                 break;
             }
         }
     }
     // remove all the connections from the maps.
-    user.disconnect();
-    System.out.println(user.connect);
-    clientIDtoUser.remove(clientId);
-    userToClientID.remove(user);
-    activeUsersHandlerToID.remove(handler);
-    activeUsersIDToHandler.remove(clientId);
-    user.uniqueIDReset();
+    try {
+        user.disconnect();
+        clientIDtoUser.remove(connectionId);
+        userToClientID.remove(user);
+        activeUsersHandlerToID.remove(handler);
+        activeUsersIDToHandler.remove(connectionId);
+        user.uniqueIDReset();
+    } catch (Exception e) {
+    }
+    
     if(handler instanceof NonBlockingConnectionHandler){
         closingChannel = true;
         return;
@@ -336,12 +326,12 @@ public void DISCONNECT(T message){
     }
 }
 
-public void ERROR(int clientID, T msg, T response ){
+public void ERROR(int connectionId, T msg, T response){
     String res = (String)response;
     String message = (String)msg;
     // check about the receipt!!!
     String error = "";
-    T  receipt = RECEIPT(msg);
+    T  receipt = RECEIPT(msg, connectionId);
     if(receipt != null){
         error = "ERROR\nreceipt:" + receipt + "message:" + msgCounter + "\nthe message:\n"
                 + message + "\n-----\n" + res + "\n\n" + '\u0000';
@@ -351,8 +341,8 @@ public void ERROR(int clientID, T msg, T response ){
                 + "\n\n" + '\u0000';
     }
     msgCounter++;
-    send(clientID, (T)error, receipt);
-    disconnect(clientID);
+    send(connectionId, (T)error, receipt);
+    disconnect(connectionId);
 }
 
 }

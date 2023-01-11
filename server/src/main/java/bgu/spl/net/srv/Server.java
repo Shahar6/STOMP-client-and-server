@@ -53,7 +53,7 @@ public interface Server<T> extends Closeable {
             Supplier<StompMessagingProtocol<T>> protocolFactory,
             Supplier<StompMessageEncoderDecoder<T>> encoderDecoderFactory) {
         ConnectionsImpl<T> connections = new ConnectionsImpl<>();        
-        return new Reactor<T>(nthreads, port, protocolFactory, encoderDecoderFactory, connections);
+        return new Reactor<T>(nthreads, port, protocolFactory, encoderDecoderFactory);
     }
 
 }

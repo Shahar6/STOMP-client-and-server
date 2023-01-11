@@ -24,7 +24,7 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
     private final SocketChannel chan;
     private final Reactor reactor;
     public boolean blocking = false;
-    public Integer ConnectionId = null;
+    public int ConnectionId;
     public ConnectionsImpl<T> connections;
 
     public NonBlockingConnectionHandler(
@@ -57,7 +57,7 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
                         T nextMessage = encdec.decodeNextByte(buf.get());
                         if (nextMessage != null) {
                             ((ConnectionsImpl<T>)connections).addMsg(nextMessage, ConnectionId);// connect between msg to id for knowing how to combine user and handler.
-                            protocol.process(nextMessage, blocking);
+                            protocol.process(nextMessage, ConnectionId);
                         }
                     }
                 } finally {

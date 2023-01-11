@@ -14,7 +14,7 @@ public class StompServer {
         Supplier<StompMessagingProtocol<String>> protocolFactory ;
         Supplier<StompMessageEncoderDecoder<String>> encdecFactory;   
                   // you can use any server... 
-        Server.reactor( 3, 
+        Server.threadPerClient(
             7777, //port
             () -> new StompMessagingProtocolImpl<>(), //protocol factory
             StompMessageEncoderDecoder::new //message encoder decoder factory
