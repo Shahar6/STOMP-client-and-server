@@ -14,13 +14,13 @@ public class StompServer {
         Supplier<StompMessagingProtocol<String>> protocolFactory ;
         Supplier<StompMessageEncoderDecoder<String>> encdecFactory;   
                   // you can use any server... 
-        Server.reactor(3,
+        Server.reactor( 3, 
             7777, //port
             () -> new StompMessagingProtocolImpl<>(), //protocol factory
             StompMessageEncoderDecoder::new //message encoder decoder factory
     ).serve();
 
-    // Server.threadPerClient(
+    // Server.reactor(
     //         Runtime.getRuntime().availableProcessors(),
     //         7777, //port
     //         () ->  new RemoteCommandInvocationProtocol<>(feed), //protocol factory

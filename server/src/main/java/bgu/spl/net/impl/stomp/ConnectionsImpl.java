@@ -23,7 +23,7 @@ public HashMap<StompUser, Integer> userToClientID = new HashMap<>(); // connect 
 public HashMap<Integer, StompUser> clientIDtoUser = new HashMap<>(); // connect between clientID to user.
 public HashMap<String, StompUser> connectBetweenUserToObjectUser = new HashMap<>();
 public static volatile int counterUniqueID = 0;
-
+public boolean closingChannel = false;
 public ConnectionsImpl(){
 }
 @Override
@@ -49,10 +49,8 @@ public void send(String channel, T msg) {
     for(int[] v: subscribes){
             ConnectionHandler<T> handler = activeUsersIDToHandler.get(v[1]);
             String response = "MESSAGE\nsubscription:" +  v[0] + "\nmessage-id:" + (msgCounter) +
-                        "destination:/" + channel + "\n\n" + (String)msg + "\n" + '\u0000';
-            handler.send((T)response);
-            //String receipt =  "RECEIPT\nreceipt-id:" + v[1] + "\n\n" + '\u0000';  
-            // handler.send((T)receipt);      
+                        "/ndestination:/" + channel + "\n\n" + (String)msg + "\n" + '\u0000'; // changed here.
+            handler.send((T)response);             
     }
     msgCounter++;
     
@@ -82,7 +80,10 @@ public void disconnect(int connectionId) {
         userToClientID.remove(user);
         user.uniqueIDReset();
     }
-    if(handler instanceof NonBlockingConnectionHandler) return;
+    if(handler instanceof NonBlockingConnectionHandler){
+        closingChannel = true;
+        return;
+    } 
     try {
         handler.close();
     } catch (Exception e) {
@@ -318,12 +319,16 @@ public void DISCONNECT(T message){
     }
     // remove all the connections from the maps.
     user.disconnect();
+    System.out.println(user.connect);
     clientIDtoUser.remove(clientId);
     userToClientID.remove(user);
     activeUsersHandlerToID.remove(handler);
     activeUsersIDToHandler.remove(clientId);
     user.uniqueIDReset();
-    if(handler instanceof NonBlockingConnectionHandler) return;
+    if(handler instanceof NonBlockingConnectionHandler){
+        closingChannel = true;
+        return;
+    } 
     try {
         handler.close();
     } catch (Exception e) {

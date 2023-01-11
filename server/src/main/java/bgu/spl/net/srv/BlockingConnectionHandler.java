@@ -40,11 +40,6 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
                 if (nextMessage != null) {
                     ((ConnectionsImpl<T>)connections).addMsg(nextMessage, ConnectionId);// connect between msg to id for knowing how to combine user and handler.
                     protocol.process(nextMessage, blocking);
-                    // response = protocol.process(nextMessage);
-                   // if (response != null) {
-                    //    out.write(encdec.encode(response));
-                   //     out.flush();
-                   // }
                 }
             }
 

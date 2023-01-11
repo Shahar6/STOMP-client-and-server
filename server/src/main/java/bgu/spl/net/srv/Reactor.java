@@ -23,7 +23,6 @@ public class Reactor<T> implements Server<T> {
     private final Supplier<StompMessageEncoderDecoder<T>> readerFactory;
     private final ActorThreadPool pool;
     private Selector selector;
-    private Connections<T> connections;
     private Thread selectorThread;
     private final ConcurrentLinkedQueue<Runnable> selectorTasks = new ConcurrentLinkedQueue<>();
 
@@ -37,12 +36,11 @@ public class Reactor<T> implements Server<T> {
         this.port = port;
         this.protocolFactory = protocolFactory;
         this.readerFactory = readerFactory;
-        this.connections =  con;
     }
 
     @Override
     public void serve() {
-        connections = new ConnectionsImpl<>();
+        ConnectionsImpl<T> connections = new ConnectionsImpl<>();
 	    selectorThread = Thread.currentThread();
         try (Selector selector = Selector.open();
             ServerSocketChannel serverSock = ServerSocketChannel.open()) {
@@ -63,7 +61,7 @@ public class Reactor<T> implements Server<T> {
                     if (!key.isValid()) {
                         continue;
                     } else if (key.isAcceptable()) {
-                        handleAccept(serverSock, selector);
+                        handleAccept(serverSock, selector, connections);
                     } else {
                         handleReadWrite(key);
                     }
@@ -97,16 +95,17 @@ public class Reactor<T> implements Server<T> {
     }
 
 
-    private void handleAccept(ServerSocketChannel serverChan, Selector selector) throws IOException {
+    private void handleAccept(ServerSocketChannel serverChan, Selector selector, ConnectionsImpl<T> con) throws IOException {
         SocketChannel clientChan = serverChan.accept();
         clientChan.configureBlocking(false);
+        StompMessagingProtocol<T> proNew = protocolFactory.get();
         final NonBlockingConnectionHandler<T> handler = new NonBlockingConnectionHandler<>(
                 readerFactory.get(),
-                protocolFactory.get(),
+                proNew,
                 clientChan,
-                this, (ConnectionsImpl<T>)connections);
-        int id = ((ConnectionsImpl<T>) connections).addActiveUser(handler);
-        handler.getProtocol().start(id, connections);      
+                this, con);
+        int id = con.addActiveUser(handler);
+        handler.getProtocol().start(id, con);      
         handler.ConnectionId = id;
         clientChan.register(selector, SelectionKey.OP_READ, handler);
     }

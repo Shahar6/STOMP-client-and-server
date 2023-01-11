@@ -58,10 +58,6 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
                         if (nextMessage != null) {
                             ((ConnectionsImpl<T>)connections).addMsg(nextMessage, ConnectionId);// connect between msg to id for knowing how to combine user and handler.
                             protocol.process(nextMessage, blocking);
-                           // if (response != null) {
-                            //    writeQueue.add(ByteBuffer.wrap(encdec.encode(response)));
-                           //     reactor.updateInterestedOps(chan, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
-                           // }
                         }
                     }
                 } finally {
