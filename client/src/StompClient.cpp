@@ -63,6 +63,7 @@
                         if(startsWith(answer, "RECEIPT")){
                             int id = stoi(answer.substr(answer.find("id:") + 3, answer.find("\n")));
                             if(std::find(logoutIds.begin(), logoutIds.end(), id) != logoutIds.end()){ // logging out, removing all user data
+                                std::cout << "close1" <<std::endl;
                                 scHandler -> close();
                                 nextId = 1;
                                 subs.clear();
@@ -85,23 +86,26 @@
                         else if(startsWith(answer, "MESSAGE")){
                             // assuming message is most recent event, as was said on forums
                             int g_index = answer.find("ion:/") + 5;
-                            int u_index = answer.find("user:") + 5;
-                            string g = answer.substr(g_index, answer.find(" ", g_index) - g_index);
+                            int u_index = answer.find("user:") + 6;
+                            string g = answer.substr(g_index, answer.find("\n", g_index) - g_index);
                             string g_user = answer.substr(u_index, answer.find("\n", u_index) - u_index);
-                            if(g_user != user){
+                        if(g_user != user){
                             std::pair<string,string> p = make_pair(g_user, g);
                             Game toUpdate(g.substr(0, g.find("_")), g.substr(g.find("_") + 1, g.length() - (g.find("_") + 1)));
                             if(records.count(p) > 0){
                                 toUpdate = records.at(p);
                             }
-                            int etime = stoi(answer.substr(answer.find("time:") + 6, answer.find("\n",answer.find("time:"))));
+                            else{
+                                records.insert(std::make_pair(p, toUpdate));
+                            }
+                            int etime = stoi(answer.substr(answer.find("time:") + 5, answer.find("\n",answer.find("time:"))));
                             if (answer.find("goals:") != std::string::npos) { // updating goals
-                                int index = answer.find("goals:") + 7;
+                                int index = answer.find("goals:") + 6;
                                 int goals = stoi(answer.substr(index, answer.find("\n", index) - index));
-                                if((unsigned) index < answer.find("team_b_updates:")){
+                                if((unsigned) index - 6 < answer.find("team b updates:")){
                                     toUpdate.set_a_goals(goals);
                                     if (answer.find("goals:", index) != std::string::npos) {
-                                        int index2 = answer.find("goals:",index) + 7;
+                                        int index2 = answer.find("goals:",index) + 6;
                                         goals = stoi(answer.substr(index2, answer.find("\n", index2) - index2));
                                         toUpdate.set_b_goals(goals);
                                     }
@@ -128,17 +132,21 @@
                             if((answer.find("before halftime: false") != std::string::npos)){
                                 toUpdate.setBeforeHalf(false);
                             }
-
-                            int des_index = answer.find("description :\n") + 15;
-                            int null_index = answer.find('\0');
-                            string details = answer.substr(des_index, null_index - 1 - des_index);
-                            int name_index = answer.find("event name : ") + 13;
-                            string name = answer.substr(answer.find(" ", name_index) + 1, answer.find("\n", name_index) - answer.find(" ", name_index));
-                            toUpdate.addDetail(etime + " - " + name + ":\n\n" + details + "\n\n\n");
+                            if((answer.find("active: false") != std::string::npos)){
+                                toUpdate.setActive(false);
+                            }
+                            int des_index = answer.find("description:\n") + 13;
+                            //int null_index = answer.find('\0');
+                            string details = answer.substr(des_index);
+                            int name_index = answer.find("event name: ") + 12;
+                            string name = answer.substr(name_index, answer.find("time:") - name_index - 1);
+                            toUpdate.addDetail(std::to_string(etime) + " - " + name + ":\n\n" + details + "\n");
+                            records.at(p) = toUpdate;
                             }
                         }
                         else if(startsWith(answer, "ERROR")){
                             std::cout << answer.substr(answer.find("message:") + 8, answer.find("\n", answer.find("message:"))) << std::endl;
+                            std::cout << "close2" <<std::endl;
                             scHandler -> close();
                             nextId = 1;
                             subs.clear();
@@ -223,21 +231,24 @@
 
         void commandToSend(string& input) {
             names_and_events toSend = parseEventsFile(input.substr(7));
+            int ctime=-1;
             if(subs.contains(toSend.team_a_name + "_" + toSend.team_b_name)){
-                int ctime=-1;
+                pair<string,string> p = std::make_pair(user, toSend.team_a_name + "_" + toSend.team_b_name);
                 Game temp(toSend.team_a_name, toSend.team_b_name);
-                if(records.count(std::make_pair(user ,toSend.team_a_name + "_" + toSend.team_b_name)) > 0){
-                    temp = records.at(std::make_pair(user ,toSend.team_a_name + "_" + toSend.team_b_name));
+                if(records.count(p) > 0){
+                    temp = records.at(p);
                     ctime = temp.getTime();
                 }
                 bool update = false;
             for(Event e : toSend.events){
                 temp.addDetail(std::to_string(e.get_time()) + " - " + e.get_name() + ":\n\n" + e.get_discription() + "\n\n\n");
-                if(e.get_time() > ctime){                    
+                if(e.get_time() > ctime){
+                    ctime = e.get_time();                   
                     update = true;
                 }
                 if(((temp.beforeHalf() && e.get_game_updates().count("before halftime") > 0) && e.get_game_updates().at("before halftime") == "false")){
                     update = true;
+                    ctime = e.get_time();
                     temp.setBeforeHalf(false);
                 }
                 input = "SEND\n";          
@@ -271,7 +282,7 @@
                 for(std::pair<string,string> p : e.get_team_a_updates()){
                     input.append("    " + p.first + ": " + p.second + "\n");
                     if(update){
-                        if(p.first == "goal"){
+                        if(p.first == "goals"){
                             temp.set_a_goals(stoi(p.second));
                         }
                         else if(p.first == "possession"){
@@ -283,7 +294,7 @@
                 for(std::pair<string,string> p : e.get_team_b_updates()){
                     input.append("    " + p.first + ": " + p.second + "\n");
                     if(update){
-                        if(p.first == "goal"){
+                        if(p.first == "goals"){
                             temp.set_b_goals(stoi(p.second));
                         }
                         else if(p.first == "possession"){
@@ -294,10 +305,10 @@
                 input.append("description:\n");
                 input.append(e.get_discription() + "\n");
                 scHandler -> sendFrameAscii(input,'\0');
-                update = false;
-                records.insert(std::make_pair(std::make_pair(user, e.get_team_a_name() + "_" + e.get_team_b_name()), temp));
+                update = false;               
                 // save game to a local array
             }
+            records.insert(std::make_pair(p, temp));
             }
             else{
                 std::cout << "you are not subscribed to the topic" << std::endl;
@@ -313,7 +324,8 @@
             string uname = input.substr(space2 + 1, space3 - (space2 + 1));
             string filename = input.substr(space3 + 1);
             ofstream outFile(filename);
-            std::pair<string,string> key(uname,game);
+            std::pair<string,string> key(uname, game);
+            std::map<std::pair<string, string>, Game> test = records;
             outFile << game.substr(0, game.find("_")) + " vs " + game.substr(game.find("_") + 1) + "\n";
             outFile << "Game stats:\n";
             outFile << "General stats:\n";

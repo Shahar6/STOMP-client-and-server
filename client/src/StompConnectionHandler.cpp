@@ -12,7 +12,7 @@ StompConnectionHandler::StompConnectionHandler(string host, short port) : host_(
                                                                 socket_(io_service_) {}
 
 StompConnectionHandler::~StompConnectionHandler() {
-	std::cout << "call3" << std::endl;
+	std::cout << "close3" << std::endl;
 	close();
 }
 
