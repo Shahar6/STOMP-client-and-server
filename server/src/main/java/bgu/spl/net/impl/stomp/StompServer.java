@@ -10,15 +10,26 @@ public class StompServer {
 
     public static void main(String[] args) {
         // TODO: implement this
-        int port;
-        Supplier<StompMessagingProtocol<String>> protocolFactory ;
-        Supplier<StompMessageEncoderDecoder<String>> encdecFactory;   
+
+        boolean tpc = false;
+        if(args[1].equals("tpc")) tpc = true;
+        int port = Integer.parseInt(args[0]);
+        if(tpc){
+            Server.threadPerClient(port, () -> new StompMessagingProtocolImpl<>(), StompMessageEncoderDecoder::new).serve();
+        }
+        else{
+            Server.reactor(Runtime.getRuntime().availableProcessors(), 
+                     port, //port
+                     () -> new StompMessagingProtocolImpl<>(), //protocol factory
+                     StompMessageEncoderDecoder::new //message encoder decoder factory
+             ).serve();
+                 }
                   // you can use any server... 
-        Server.threadPerClient(
-            7777, //port
-            () -> new StompMessagingProtocolImpl<>(), //protocol factory
-            StompMessageEncoderDecoder::new //message encoder decoder factory
-    ).serve();
+//     Server.reactor(3, 
+   ////         7777, //port
+    //        () -> new StompMessagingProtocolImpl<>(), //protocol factory
+    /////        StompMessageEncoderDecoder::new //message encoder decoder factory
+   // ).serve();
 
     // Server.reactor(
     //         Runtime.getRuntime().availableProcessors(),
